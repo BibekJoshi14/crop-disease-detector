@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>किसान सहायक - Crop Disease Detector</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <h1>🌾 किसान सहायक</h1>
+      <p class="subtitle">AI Powered Crop Disease Detection for Nepal</p>
+    </div>
+    <div class="header-right">
+      <select id="languageSelect" onchange="changeLanguage()">
+        <option value="english">English</option>
+        <option value="nepali">नेपाली</option>
+      </select>
+      <select id="citySelect" onchange="updateWeather()">
+        <option value="Kathmandu">Kathmandu</option>
+        <option value="Pokhara">Pokhara</option>
+        <option value="Chitwan">Chitwan</option>
+        <option value="Butwal">Butwal</option>
+        <option value="Biratnagar">Biratnagar</option>
+        <option value="Dharan">Dharan</option>
+        <option value="Hetauda">Hetauda</option>
+        <option value="Dhangadhi">Dhangadhi</option>
+      </select>
+    </div>
+  </div>
+  
+
+  <!-- Weather bar -->
+  <div class="weather-bar" id="weatherBar">~
+    <div class="weather-item">
+      <span id="weatherIcon">🌤️</span>
+      <span id="weatherText">Loading weather...</span>
+    </div>
+    <div class="weather-item">
+      🌡️ <span id="tempText">--°C</span>
+    </div>
+    <div class="weather-item">
+      💧 <span id="humidityText">--%</span>
+    </div>
+    <div class="weather-item">
+      📍 <span id="cityText">Kathmandu</span>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- Left panel -->
+    <div class="left-panel">
+
+      <!-- Upload section -->
+      <div class="upload-section">
+        <div class="upload-box" id="uploadBox"
+          onclick="document.getElementById('fileInput').click()">
+          <div class="upload-icon">📸</div>
+          <p id="uploadText">Click to upload crop photo</p>
+          <p class="upload-hint" id="uploadHint">
+            Take a clear photo of the affected leaves or plant
+          </p>
+          <input type="file" id="fileInput"
+            accept="image/*" hidden
+            onchange="handleUpload(event)"/>
+        </div>
+
+        <!-- Preview -->
+        <div class="preview-box hidden" id="previewBox">
+          <img id="cropPreview" src="" alt="Crop preview"/>
+          <div class="preview-actions">
+            <button class="analyze-btn" id="analyzeBtn"
+              onclick="analyzeCrop()">
+              🔍 <span id="analyzeBtnText">Analyze Crop</span>
+            </button>
+            <button class="clear-btn" onclick="clearImage()">
+              ✕ Clear
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div class="loading hidden" id="loading">
+        <div class="spinner"></div>
+        <p id="loadingText">🤖 AI is analyzing your crop...</p>
+        <p class="loading-sub">
+          Identifying disease and preparing recommendations...
+        </p>
+      </div>
+
+      <!-- Results -->
+      <div class="results hidden" id="results">
+
+        <!-- Disease detected -->
+        <div class="disease-card" id="diseaseCard">
+          <div class="disease-header">
+            <div>
+              <h2 id="diseaseName">Disease Name</h2>
+              <p id="diseaseNepali" class="nepali-name"></p>
+            </div>
+            <div class="severity-badge" id="severityBadge">
+              HIGH
+            </div>
+          </div>
+
+          <div class="stats-row">
+            <div class="stat-item">
+              <span class="stat-value" id="confidence">0%</span>
+              <span class="stat-label">Confidence</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value" id="affectedArea">0%</span>
+              <span class="stat-label">Affected Area</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value" id="cropType">--</span>
+              <span class="stat-label">Crop Type</span>
+            </div>
+          </div>
+
+          <div class="immediate-action" id="immediateAction">
+          </div>
+        </div>
+
+        <!-- Symptoms -->
+        <div class="info-card">
+          <h3 id="symptomsTitle">🔍 Symptoms Detected</h3>
+          <ul id="symptomsList"></ul>
+        </div>
+
+        <!-- Treatment -->
+        <div class="info-card treatment">
+          <h3 id="treatmentTitle">💊 Treatment</h3>
+          <ul id="treatmentList"></ul>
+        </div>
+
+        <!-- AI Advice -->
+        <div class="info-card advice">
+          <h3 id="adviceTitle">🤖 AI Recommendations</h3>
+          <div id="urgencyBadge" class="urgency-badge"></div>
+          <ul id="adviceList"></ul>
+          <div class="advice-meta">
+            <p id="recoveryTime"></p>
+            <p id="costEstimate"></p>
+          </div>
+        </div>
+
+        <!-- Nearby offices -->
+        <div class="info-card offices">
+          <h3>📍 Nearby Agricultural Offices</h3>
+          <div id="officesList"></div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Right panel -->
+    <div class="right-panel">
+
+      <!-- How to use -->
+      <div class="guide-card">
+        <h3 id="guideTitle">📖 How to Use</h3>
+        <div class="guide-steps">
+          <div class="guide-step">
+            <span class="step-num">1</span>
+            <p id="step1">Take a clear photo of the affected crop</p>
+          </div>
+          <div class="guide-step">
+            <span class="step-num">2</span>
+            <p id="step2">Upload the photo by clicking the camera icon</p>
+          </div>
+          <div class="guide-step">
+            <span class="step-num">3</span>
+            <p id="step3">Click Analyze Crop and wait for AI analysis</p>
+          </div>
+          <div class="guide-step">
+            <span class="step-num">4</span>
+            <p id="step4">Follow the treatment recommendations</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Supported crops -->
+      <div class="crops-card">
+        <h3 id="cropsTitle">🌱 Supported Crops</h3>
+        <div class="crops-grid">
+          <div class="crop-item">🍅 Tomato</div>
+          <div class="crop-item">🥔 Potato</div>
+          <div class="crop-item">🌾 Rice</div>
+          <div class="crop-item">🌽 Maize</div>
+          <div class="crop-item">🌿 Wheat</div>
+          <div class="crop-item">🥬 Vegetables</div>
+        </div>
+      </div>
+
+      <!-- Disease stats -->
+      <div class="stats-card">
+        <h3>📊 Session Statistics</h3>
+        <div class="session-stats">
+          <div class="session-stat">
+            <h4 id="totalScans">0</h4>
+            <p>Total Scans</p>
+          </div>
+          <div class="session-stat">
+            <h4 id="diseasesFound">0</h4>
+            <p>Diseases Found</p>
+          </div>
+          <div class="session-stat">
+            <h4 id="healthyFound">0</h4>
+            <p>Healthy Crops</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weather impact -->
+      <div class="weather-card" id="weatherImpact">
+        <h3>🌤️ Weather Impact</h3>
+        <p id="weatherImpactText">
+          Analyze a crop to see weather impact on disease.
+        </p>
+      </div>
+
+      <!-- Tips -->
+      <div class="tips-card">
+        <h3 id="tipsTitle">💡 Farming Tips</h3>
+        <div id="tipsList">
+          <div class="tip-item">
+            🌱 Inspect crops every 3-4 days for early detection
+          </div>
+          <div class="tip-item">
+            💧 Avoid overhead watering to prevent fungal diseases
+          </div>
+          <div class="tip-item">
+            🔄 Practice crop rotation to break disease cycles
+          </div>
+          <div class="tip-item">
+            🧤 Always wear gloves when handling diseased plants
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
