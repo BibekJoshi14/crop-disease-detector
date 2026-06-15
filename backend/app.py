@@ -3,6 +3,7 @@ import json
 import requests
 import os
 import io
+import re
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -37,25 +38,30 @@ def call_groq(payload):
         GROQ_URL, headers=headers, json=payload
     )
     data = response.json()
-
     if "choices" not in data:
         raise Exception(f"Groq API Error: {data}")
-
     return data["choices"][0]["message"]["content"]
+
+
+# -------------------- DEFAULT RESPONSE --------------------
+def default_response():
+    return {
+        "crop_type": "unknown",
+        "disease_detected": "Unable to analyze",
+        "confidence": 0,
+        "severity": "Low",
+        "visible_symptoms": ["Could not detect symptoms"],
+        "affected_area_percent": 0,
+        "immediate_action": "Please try with a clearer photo",
+        "description": "Could not analyze this image"
+    }
 
 
 # -------------------- ANALYZE CROP IMAGE --------------------
 def analyze_crop_image(base64_image):
-    prompt = """You are an expert agricultural scientist 
+    prompt = """You are an expert agricultural scientist
 specializing in crop diseases in Nepal and South Asia.
-
-Analyze this crop image carefully and identify:
-1. The crop type
-2. Any diseases present
-3. Disease severity
-4. Confidence level
-
-Respond ONLY with this exact JSON format:
+Analyze this crop image and respond ONLY with this exact JSON:
 {
   "crop_type": "tomato/potato/rice/wheat/maize/other",
   "disease_detected": "disease name or Healthy Crop",
@@ -90,9 +96,24 @@ Respond ONLY with this exact JSON format:
     }
 
     text = call_groq(payload)
+    print("AI Response:", text)
+
     clean = text.replace(
         "```json", "").replace("```", "").strip()
-    return json.loads(clean)
+
+    if not clean:
+        return default_response()
+
+    try:
+        return json.loads(clean)
+    except Exception:
+        json_match = re.search(r'\{.*\}', clean, re.DOTALL)
+        if json_match:
+            try:
+                return json.loads(json_match.group())
+            except Exception:
+                return default_response()
+        return default_response()
 
 
 # -------------------- GET WEATHER --------------------
@@ -106,7 +127,6 @@ def get_weather(city="Kathmandu"):
         }
         response = requests.get(url, params=params)
         data = response.json()
-
         if response.status_code == 200:
             return {
                 "weather": data['weather'][0]['main'],
@@ -132,27 +152,25 @@ def get_default_weather():
 
 # -------------------- GET AI RECOMMENDATIONS --------------------
 def get_farming_advice(
-    disease_name, crop_type,
-    weather, severity
+    disease_name, crop_type, weather, severity
 ):
-    prompt = f"""You are an expert agricultural advisor 
+    prompt = f"""You are an expert agricultural advisor
 for Nepali farmers.
 
 Disease: {disease_name}
 Crop: {crop_type}
-Current Weather: {weather['weather']}, 
-{weather['temperature']}°C, 
+Current Weather: {weather['weather']},
+{weather['temperature']}°C,
 Humidity: {weather['humidity']}%
 Severity: {severity}
 
-Give practical farming advice considering Nepal's context.
 Respond ONLY in JSON:
 {{
   "urgency": "Immediate/Within 24 hours/Within a week",
-  "weather_impact": "how current weather affects the disease",
+  "weather_impact": "how current weather affects disease",
   "top_advice": [
     "advice 1",
-    "advice 2", 
+    "advice 2",
     "advice 3"
   ],
   "nepali_advice": [
@@ -176,7 +194,27 @@ Respond ONLY in JSON:
     text = call_groq(payload)
     clean = text.replace(
         "```json", "").replace("```", "").strip()
-    return json.loads(clean)
+
+    try:
+        return json.loads(clean)
+    except Exception:
+        return {
+            "urgency": "Within a week",
+            "weather_impact": "Monitor weather conditions",
+            "top_advice": [
+                "Consult local agricultural office",
+                "Monitor the crop regularly",
+                "Apply appropriate treatment"
+            ],
+            "nepali_advice": [
+                "स्थानीय कृषि कार्यालयसँग सल्लाह लिनुस्",
+                "बाली नियमित निरीक्षण गर्नुस्",
+                "उचित उपचार लागू गर्नुस्"
+            ],
+            "nearby_help": "Contact local agricultural office",
+            "cost_estimate": "NPR 500-2000",
+            "recovery_time": "1-2 weeks"
+        }
 
 
 # -------------------- FIND NEARBY OFFICES --------------------
@@ -246,7 +284,7 @@ def analyze():
         # Analyze crop image
         analysis = analyze_crop_image(image_data)
 
-        # Get disease info from database
+        # Get disease info
         disease_info = get_disease_info(
             analysis.get("disease_detected", "")
         )
@@ -256,7 +294,7 @@ def analyze():
             analysis.get("severity", "Low")
         )
 
-        # Get weather data
+        # Get weather
         weather = get_weather(city)
 
         # Get farming advice
@@ -282,6 +320,7 @@ def analyze():
         })
 
     except Exception as e:
+        print("Error:", str(e))
         return jsonify({"error": str(e)}), 500
 
 
