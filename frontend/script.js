@@ -2,7 +2,7 @@
 // KISAAN SAHAYAK — Crop Disease Detector
 // ============================================
 
-const BACKEND_URL = 'http://127.0.0.1:5000';
+const BACKEND_URL = 'https://crop-disease-detector-nu.vercel.app';
 
 // State
 let currentAnalysis = null;
